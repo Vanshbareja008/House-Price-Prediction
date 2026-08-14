@@ -2,21 +2,17 @@ import gradio as gr
 import joblib
 import pandas as pd
 
-# ==========================================
-# LOAD MODEL
-# ==========================================
-
-MODEL_PATH = "house_price_prediction_model.pkl"
-
-model = joblib.load(MODEL_PATH)
-
 
 # ==========================================
-# LABEL ENCODING USED DURING TRAINING
+# Load Trained Model
 # ==========================================
-# IMPORTANT:
-# These mappings must match the encoding used
-# while training the model.
+
+model = joblib.load("house_price_prediction_model.pkl")
+
+
+# ==========================================
+# Encoding Maps
+# ==========================================
 
 location_map = {
     "Downtown": 0,
@@ -28,7 +24,8 @@ location_map = {
 condition_map = {
     "Excellent": 0,
     "Fair": 1,
-    "Good": 2
+    "Good": 2,
+    "Poor": 3
 }
 
 garage_map = {
@@ -38,28 +35,21 @@ garage_map = {
 
 
 # ==========================================
-# PREDICTION FUNCTION
+# Prediction Function
 # ==========================================
 
-def predict_house_price(
-    area,
-    bedrooms,
-    bathrooms,
-    floors,
-    year_built,
-    location,
-    condition,
-    garage
-):
+def predict_price(area, bedrooms, bathrooms, floors,
+                  year_built, location, condition, garage):
 
     try:
+
         # Convert categorical values to encoded values
         location_encoded = location_map[location]
         condition_encoded = condition_map[condition]
         garage_encoded = garage_map[garage]
 
-        # Create dataframe in EXACT training order
-        sample = pd.DataFrame({
+        # Create input DataFrame
+        input_data = pd.DataFrame({
             "Area": [area],
             "Bedrooms": [bedrooms],
             "Bathrooms": [bathrooms],
@@ -70,27 +60,27 @@ def predict_house_price(
             "Garage": [garage_encoded]
         })
 
-        # Prediction
-        predicted_price = model.predict(sample)[0]
+        # Predict
+        prediction = model.predict(input_data)[0]
 
-        return f"${predicted_price:,.2f}"
+        return f"${prediction:,.2f}"
 
     except Exception as e:
         return f"Prediction Error: {str(e)}"
 
 
 # ==========================================
-# CUSTOM CSS
+# Custom CSS
 # ==========================================
 
 css = """
 body {
-    background: #f5f5f5;
+    background: #f4f5f7;
 }
 
 .gradio-container {
     max-width: 1100px !important;
-    margin: auto !important;
+    margin: auto;
 }
 
 .header {
@@ -103,72 +93,65 @@ body {
 }
 
 .header h1 {
-    font-size: 34px;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
+    font-size: 32px;
 }
 
 .header p {
-    font-size: 16px;
-    opacity: 0.85;
-}
-
-.card {
-    border-radius: 15px;
-    padding: 20px;
-    border: 1px solid #e5e7eb;
+    margin: 5px;
+    color: #d1d5db;
 }
 
 .result-box {
-    font-size: 28px !important;
-    font-weight: bold !important;
-    text-align: center !important;
+    text-align: center;
+    padding: 20px;
+    border-radius: 12px;
 }
 
 .footer {
     text-align: center;
     margin-top: 20px;
-    color: #666;
-    font-size: 14px;
+    color: #6b7280;
 }
 """
 
 
 # ==========================================
-# GRADIO INTERFACE
+# Gradio Interface
 # ==========================================
 
 with gr.Blocks(
     title="House Price Prediction",
-    css=css,
-    theme=gr.themes.Soft()
+    css=css
 ) as app:
 
     gr.HTML("""
     <div class="header">
         <h1>🏠 House Price Prediction</h1>
-        <p>AI-powered house price estimation using XGBoost</p>
+        <p>Machine Learning Based Property Price Prediction</p>
+        <p>Powered by XGBoost Regression</p>
     </div>
     """)
 
+    gr.Markdown(
+        "### Enter Property Details\n"
+        "Provide the house information below to estimate its market price."
+    )
+
     with gr.Row():
 
-        # --------------------------------------
-        # LEFT SIDE - INPUTS
-        # --------------------------------------
-
-        with gr.Column(elem_classes="card"):
-
-            gr.Markdown("## 🏡 Property Details")
+        with gr.Column():
 
             area = gr.Number(
                 label="Area (sq ft)",
                 value=2500,
-                minimum=100
+                minimum=600,
+                maximum=5000
             )
 
             bedrooms = gr.Slider(
                 minimum=1,
-                maximum=10,
+                maximum=6,
                 step=1,
                 value=4,
                 label="Bedrooms"
@@ -176,7 +159,7 @@ with gr.Blocks(
 
             bathrooms = gr.Slider(
                 minimum=1,
-                maximum=6,
+                maximum=4,
                 step=1,
                 value=3,
                 label="Bathrooms"
@@ -184,27 +167,21 @@ with gr.Blocks(
 
             floors = gr.Slider(
                 minimum=1,
-                maximum=5,
+                maximum=4,
                 step=1,
                 value=2,
                 label="Floors"
             )
 
+        with gr.Column():
+
             year_built = gr.Slider(
-                minimum=1950,
-                maximum=2026,
+                minimum=1970,
+                maximum=2024,
                 step=1,
                 value=2018,
                 label="Year Built"
             )
-
-        # --------------------------------------
-        # RIGHT SIDE - CATEGORICAL INPUTS
-        # --------------------------------------
-
-        with gr.Column(elem_classes="card"):
-
-            gr.Markdown("## 📍 Location & Features")
 
             location = gr.Dropdown(
                 choices=[
@@ -213,7 +190,7 @@ with gr.Blocks(
                     "Suburban",
                     "Urban"
                 ],
-                value="Suburban",
+                value="Downtown",
                 label="Location"
             )
 
@@ -221,56 +198,35 @@ with gr.Blocks(
                 choices=[
                     "Excellent",
                     "Fair",
-                    "Good"
+                    "Good",
+                    "Poor"
                 ],
                 value="Good",
-                label="Condition"
+                label="Property Condition"
             )
 
             garage = gr.Dropdown(
                 choices=[
-                    "No",
-                    "Yes"
+                    "Yes",
+                    "No"
                 ],
                 value="Yes",
                 label="Garage"
             )
 
-            predict_btn = gr.Button(
-                "💰 Predict House Price",
-                variant="primary",
-                size="lg"
-            )
-
-            clear_btn = gr.ClearButton(
-                components=[
-                    area,
-                    bedrooms,
-                    bathrooms,
-                    floors,
-                    year_built,
-                    location,
-                    condition,
-                    garage
-                ],
-                value="Clear"
-            )
-
-    # ------------------------------------------
-    # RESULT
-    # ------------------------------------------
-
-    gr.Markdown("## 📊 Prediction Result")
-
-    prediction = gr.Textbox(
-        label="Estimated House Price",
-        placeholder="Your predicted price will appear here...",
-        elem_classes="result-box",
-        interactive=False
+    predict_button = gr.Button(
+        "Predict House Price",
+        variant="primary"
     )
 
-    predict_btn.click(
-        fn=predict_house_price,
+    result = gr.Textbox(
+        label="Predicted House Price",
+        placeholder="Your predicted price will appear here...",
+        elem_classes="result-box"
+    )
+
+    predict_button.click(
+        fn=predict_price,
         inputs=[
             area,
             bedrooms,
@@ -281,37 +237,18 @@ with gr.Blocks(
             condition,
             garage
         ],
-        outputs=prediction
+        outputs=result
     )
 
-    # ------------------------------------------
-    # EXAMPLE
-    # ------------------------------------------
-
     gr.Markdown("""
-    ### 💡 Example
-
-    **Area:** 2500 sq ft  
-    **Bedrooms:** 4  
-    **Bathrooms:** 3  
-    **Floors:** 2  
-    **Year Built:** 2018  
-    **Location:** Suburban  
-    **Condition:** Good  
-    **Garage:** Yes  
-
-    The notebook used these values as a sample and obtained a predicted price of approximately **$783,862.80**. :contentReference[oaicite:2]{index=2}
-    """)
-
-    gr.HTML("""
     <div class="footer">
-        Developed by <b>Vansh</b> | Roll No. 241047 | PIET, Samalkha
+        Developed by Vansh | Roll No. 241047 | PIET, Samalkha
     </div>
     """)
 
 
 # ==========================================
-# LAUNCH
+# Launch Application
 # ==========================================
 
 if __name__ == "__main__":
