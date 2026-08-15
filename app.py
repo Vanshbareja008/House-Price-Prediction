@@ -2,7 +2,6 @@ import os
 import gradio as gr
 import joblib
 import pandas as pd
-import pandas_bokeh
 import plotly.graph_objects as go
 import plotly.express as px
 
