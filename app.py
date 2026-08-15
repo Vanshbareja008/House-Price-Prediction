@@ -11,10 +11,6 @@ import plotly.express as px
 
 model = joblib.load("house_price_prediction_model.pkl")
 
-# Location & Condition mapping for UI display logic
-LOCATION_MAP = {0: "Downtown", 1: "Suburban", 2: "Urban"}
-CONDITION_MAP = {0: "Excellent", 1: "Fair", 2: "Good"}
-
 
 # ==========================================
 # Core Logic & Dynamic Analytics
@@ -31,7 +27,7 @@ def predict_and_analyze(
     garage
 ):
     try:
-        # 1. Original DataFrame Creation & Model Prediction
+        # 1. Original DataFrame Creation & Model Prediction (Preserved)
         input_data = pd.DataFrame([{
             "Area": area,
             "Bedrooms": bedrooms,
@@ -53,14 +49,14 @@ def predict_and_analyze(
         price_per_sqft = predicted_price / area if area > 0 else 0
         suggestions.append(f"• **Unit Rate:** Estimated at **₹{price_per_sqft:,.2f}/sq ft**.")
 
-        # Age impact
+        # Property Age Evaluation
         age = 2026 - year_built
         if age > 30:
             suggestions.append("• **Age Factor:** Property is over 30 years old. Budgeting for structural updates or HVAC upgrades could increase resale value.")
         elif age < 5:
             suggestions.append("• **New Construction:** Premium pricing reflects recent build year with lower immediate maintenance overhead.")
 
-        # Feature density check
+        # Density check
         if area > 0 and (bedrooms + bathrooms) / area > 0.005:
             suggestions.append("• **Layout Density:** High room count relative to area. Ensure room sizes meet target buyer expectations.")
         
@@ -72,8 +68,7 @@ def predict_and_analyze(
 
         suggestion_text = "\n".join(suggestions)
 
-        # 3. Interactive Chart 1: Estimated Feature Contribution
-        # Sample relative importance metrics for visual engagement
+        # 3. Interactive Chart 1: Feature Impact Weights
         features = ['Area', 'Location', 'Year Built', 'Bedrooms', 'Bathrooms', 'Condition', 'Garage', 'Floors']
         importance = [35, 20, 15, 10, 8, 6, 4, 2]
         
@@ -94,11 +89,10 @@ def predict_and_analyze(
             coloraxis_showscale=False
         )
 
-        # 4. Interactive Chart 2: Market Trend Projection
+        # 4. Interactive Chart 2: Property Appreciation Trend
         years = [year_built, year_built + 5, year_built + 10, 2026, 2028, 2030]
         years = sorted(list(set([y for y in years if y <= 2030])))
         
-        # Simulated appreciation curve around estimated price
         base_val = predicted_price * 0.7
         trend_prices = [base_val * ((1.05) ** (i)) for i in range(len(years))]
         
@@ -128,24 +122,31 @@ def predict_and_analyze(
 
 
 # ==========================================
-# Custom CSS Styling
+# Custom CSS Styling (Background Overlay + Cards)
 # ==========================================
 
 custom_css = """
+/* Full-page Background Overlay Styling */
 .gradio-container {
-    background: linear-gradient(180deg, #edf3f8 0%, #f7fafc 100%);
+    background: linear-gradient(rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.75)), 
+                url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2000&auto=format&fit=crop') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-attachment: fixed !important;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
+
+/* Hero Header Text Colors for Dark Background */
 .hero-header {
     text-align: center;
-    padding: 2.5rem 1rem 1.5rem 1rem;
+    padding: 3rem 1rem 2rem 1rem;
     max-width: 800px;
     margin: 0 auto;
 }
 .hero-header h1 {
-    font-size: 2.6rem;
+    font-size: 2.8rem;
     font-weight: 700;
-    color: #1a202c;
+    color: #ffffff !important;
     letter-spacing: -0.02em;
     margin-bottom: 0.5rem;
 }
@@ -153,39 +154,44 @@ custom_css = """
     font-family: serif;
     font-style: italic;
     font-weight: 400;
-    color: #2b6cb0;
+    color: #93c5fd !important;
 }
 .hero-header p {
-    color: #4a5568;
-    font-size: 1.1rem;
+    color: #e2e8f0 !important;
+    font-size: 1.15rem;
 }
+
+/* Glassmorphic Container Cards */
 .card-container {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    border-radius: 20px;
-    padding: 2rem;
-    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
-    margin-bottom: 1.5rem;
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 20px !important;
+    padding: 2rem !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2) !important;
+    margin-bottom: 2rem !important;
 }
+
 .result-box textarea {
     font-size: 2rem !important;
     font-weight: 700 !important;
-    color: #2b6cb0 !important;
+    color: #1e40af !important;
     text-align: center !important;
-    background: #f7fafc !important;
+    background: #f8fafc !important;
     border-radius: 12px !important;
 }
+
 .predict-btn {
-    background: #1a202c !important;
+    background: #0f172a !important;
     color: #ffffff !important;
     border-radius: 30px !important;
     font-weight: 600 !important;
-    padding: 0.75rem 2rem !important;
+    padding: 0.85rem 2rem !important;
     transition: all 0.2s ease !important;
 }
 .predict-btn:hover {
-    background: #2d3748 !important;
+    background: #1e293b !important;
     transform: translateY(-1px);
 }
 """
@@ -281,7 +287,7 @@ with gr.Blocks(
                     label="Garage Availability"
                 )
 
-        # Trigger Action
+        # Predict Action Trigger
         with gr.Row():
             predict_button = gr.Button(
                 "✨ Calculate Valuation & Insights",
@@ -289,7 +295,7 @@ with gr.Blocks(
                 elem_classes=["predict-btn"]
             )
 
-    # Output Display Section
+    # Output & Graphical Section
     with gr.Column(elem_classes=["card-container"]):
         gr.Markdown("### 📊 Valuation & Investment Insights")
         
@@ -305,12 +311,12 @@ with gr.Blocks(
                     value="*Click 'Calculate Valuation' to generate customized suggestions.*"
                 )
 
-        # Interactive Graphical Analytics
+        # Plotly Analytics Visualizations
         with gr.Row():
             chart_importance = gr.Plot(label="Feature Weight Breakdown")
             chart_trend = gr.Plot(label="Appreciation Trend")
 
-    # Dynamic Interaction
+    # Binding function call
     predict_button.click(
         fn=predict_and_analyze,
         inputs=[
